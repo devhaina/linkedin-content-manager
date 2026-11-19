@@ -1,0 +1,52 @@
+<div class="stack">
+  <div class="row-between">
+    <h1>Content history</h1>
+    <a routerLink="/content/new" class="btn btn-primary">+ Generate content</a>
+  </div>
+
+  <div class="card" style="padding: 0;">
+    @if (loading()) {
+      <div class="empty-state"><span class="spinner"></span> Loading…</div>
+    } @else if (items().length === 0) {
+      <div class="empty-state">
+        <p>No content generated yet.</p>
+        <a routerLink="/content/new" class="btn btn-primary">Generate your first post</a>
+      </div>
+    } @else {
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>Topic</th>
+            <th>Campaign</th>
+            <th>Status</th>
+            <th>Critique score</th>
+            <th>Approval</th>
+            <th>Schedule</th>
+            <th>Created</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (item of items(); track item.executionId) {
+            <tr>
+              <td><a [routerLink]="['/content', item.executionId]">{{ item.topic }}</a></td>
+              <td>{{ item.campaignName }}</td>
+              <td><app-status-badge [status]="item.status" /></td>
+              <td>{{ item.critiqueScore != null ? item.critiqueScore + ' / 10' : '—' }}</td>
+              <td>
+                @if (item.approvalStatus) {
+                  <app-status-badge [status]="item.approvalStatus" />
+                } @else { — }
+              </td>
+              <td>
+                @if (item.scheduleStatus) {
+                  <app-status-badge [status]="item.scheduleStatus" />
+                } @else { — }
+              </td>
+              <td class="muted">{{ item.createdAtUtc | date: 'MMM d, h:mm a' }}</td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    }
+  </div>
+</div>

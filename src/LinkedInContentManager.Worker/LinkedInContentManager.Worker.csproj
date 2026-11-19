@@ -1,0 +1,21 @@
+<Project Sdk="Microsoft.NET.Sdk.Worker">
+
+  <PropertyGroup>
+    <TargetFramework>net11.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <UserSecretsId>dotnet-LinkedInContentManager.Worker-7aa803d0-2b01-42ac-998b-b81344ccf3f1</UserSecretsId>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Extensions.Hosting" Version="11.0.0" />
+    <PackageReference Include="Serilog.Extensions.Hosting" Version="10.0.0" />
+    <PackageReference Include="Serilog.Sinks.Console" Version="6.1.1" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\LinkedInContentManager.Application\LinkedInContentManager.Application.csproj" />
+    <ProjectReference Include="..\LinkedInContentManager.Infrastructure\LinkedInContentManager.Infrastructure.csproj" />
+    <ProjectReference Include="..\LinkedInContentManager.Contracts\LinkedInContentManager.Contracts.csproj" />
+  </ItemGroup>
+</Project>

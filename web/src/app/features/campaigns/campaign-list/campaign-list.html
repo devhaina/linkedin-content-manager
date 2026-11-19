@@ -1,0 +1,54 @@
+<div class="stack">
+  <div class="row-between">
+    <h1>Campaigns</h1>
+    @if (auth.canEdit()) {
+      <a routerLink="/campaigns/new" class="btn btn-primary">+ New campaign</a>
+    }
+  </div>
+
+  <div class="card" style="padding: 0;">
+    @if (loading()) {
+      <div class="empty-state"><span class="spinner"></span> Loading campaigns…</div>
+    } @else if (campaigns().length === 0) {
+      <div class="empty-state">
+        <p>No campaigns yet.</p>
+        @if (auth.canEdit()) {
+          <a routerLink="/campaigns/new" class="btn btn-primary">Create your first campaign</a>
+        }
+      </div>
+    } @else {
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>Name</th>
+            <th>Niche</th>
+            <th>Default persona</th>
+            <th>Status</th>
+            <th>Topics</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (campaign of campaigns(); track campaign.id) {
+            <tr>
+              <td><strong>{{ campaign.name }}</strong></td>
+              <td>{{ campaign.nicheName }}</td>
+              <td>{{ campaign.defaultPersona }}</td>
+              <td><app-status-badge [status]="campaign.status" /></td>
+              <td>{{ campaign.contentTopicCount }}</td>
+              <td class="row">
+                <a [routerLink]="['/content/new']" [queryParams]="{ campaignId: campaign.id }" class="btn btn-secondary btn-sm">Generate content</a>
+                @if (auth.canEdit()) {
+                  <a [routerLink]="['/campaigns', campaign.id, 'edit']" class="btn btn-secondary btn-sm">Edit</a>
+                  @if (campaign.status !== 'Archived') {
+                    <button class="btn btn-danger btn-sm" (click)="archive(campaign)">Archive</button>
+                  }
+                }
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    }
+  </div>
+</div>

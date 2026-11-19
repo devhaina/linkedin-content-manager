@@ -1,0 +1,12 @@
+import { Component } from '@angular/core';
+import { RouterOutlet } from '@angular/router';
+import { ToastHost } from './layout/toast-host/toast-host';
+import { TopNav } from './layout/top-nav/top-nav';
+
+@Component({
+  selector: 'app-root',
+  imports: [RouterOutlet, TopNav, ToastHost],
+  templateUrl: './app.html',
+  styleUrl: './app.scss',
+})
+export class App {}

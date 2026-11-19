@@ -1,0 +1,51 @@
+<div class="stack">
+  <h1>Publishing calendar</h1>
+
+  <div class="card" style="padding: 0;">
+    @if (loading()) {
+      <div class="empty-state"><span class="spinner"></span> Loading…</div>
+    } @else if (schedules().length === 0) {
+      <div class="empty-state">No publishing schedules yet. Approve a piece of content and schedule it from its detail page.</div>
+    } @else {
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>Recommended</th>
+            <th>Status</th>
+            <th>Scheduled for</th>
+            <th>Published</th>
+            <th>Hashtag strategy</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (schedule of schedules(); track schedule.id) {
+            <tr>
+              <td>{{ schedule.recommendedDay }}, {{ schedule.recommendedTime }}<br /><span class="muted">{{ schedule.audienceTimezone }}</span></td>
+              <td><app-status-badge [status]="schedule.status" /></td>
+              <td>
+                @if (editingId() === schedule.id) {
+                  <form [formGroup]="rescheduleForm" (ngSubmit)="submitReschedule(schedule)" class="row">
+                    <input type="datetime-local" formControlName="scheduledAt" />
+                    <button type="submit" class="btn btn-primary btn-sm" [disabled]="busy()">Save</button>
+                    <button type="button" class="btn btn-secondary btn-sm" (click)="editingId.set(null)">Cancel</button>
+                  </form>
+                } @else {
+                  {{ schedule.scheduledAtUtc ? (schedule.scheduledAtUtc | date: 'medium') : '—' }}
+                }
+              </td>
+              <td>{{ schedule.publishedAtUtc ? (schedule.publishedAtUtc | date: 'medium') : '—' }}</td>
+              <td class="muted" style="max-width: 280px;">{{ schedule.hashtagStrategy }}</td>
+              <td class="row">
+                @if (auth.canEdit() && editingId() !== schedule.id && (schedule.status === 'Scheduled' || schedule.status === 'Failed')) {
+                  <button class="btn btn-secondary btn-sm" (click)="startEdit(schedule)">Reschedule</button>
+                  <button class="btn btn-danger btn-sm" (click)="cancel(schedule)">Cancel</button>
+                }
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    }
+  </div>
+</div>

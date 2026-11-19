@@ -1,0 +1,132 @@
+services:
+  postgres:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      POSTGRES_DB: ${POSTGRES_DB:-linkedin_content_manager}
+    ports:
+      # Host-side 5544, not 5432: this dev machine has something (not visible to `lsof`,
+      # possibly a Docker Desktop internal reservation) holding both 5432 and 5433 — 5544 is
+      # the one port in this range confirmed free. Irrelevant to inter-container traffic —
+      # api/worker talk to postgres:5432 over the compose network regardless of this mapping.
+      - "5544:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  rabbitmq:
+    image: rabbitmq:4-management-alpine
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER:-guest}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD:-guest}
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 10s
+      timeout: 10s
+      retries: 10
+
+  crewai-service:
+    build:
+      context: ./crewai-service
+    environment:
+      OPENAI_API_KEY: ${OPENAI_API_KEY}
+      SERPER_API_KEY: ${SERPER_API_KEY}
+      CREWAI_SERVICE_API_KEY: ${CREWAI_SERVICE_API_KEY}
+      CREWAI_SERVICE_HOST: 0.0.0.0
+      CREWAI_SERVICE_PORT: 8000
+    ports:
+      - "8000:8000"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health').read()"]
+      interval: 15s
+      timeout: 10s
+      retries: 10
+      start_period: 15s
+
+  api:
+    build:
+      context: .
+      dockerfile: src/LinkedInContentManager.API/Dockerfile
+    environment:
+      ASPNETCORE_URLS: http://+:8080
+      ASPNETCORE_ENVIRONMENT: Production
+      ConnectionStrings__PostgreSql: Host=postgres;Port=5432;Database=${POSTGRES_DB:-linkedin_content_manager};Username=${POSTGRES_USER:-postgres};Password=${POSTGRES_PASSWORD:-postgres}
+      ConnectionStrings__Redis: redis:6379
+      RabbitMq__HostName: rabbitmq
+      RabbitMq__Port: "5672"
+      RabbitMq__UserName: ${RABBITMQ_USER:-guest}
+      RabbitMq__Password: ${RABBITMQ_PASSWORD:-guest}
+      CrewAiService__BaseUrl: http://crewai-service:8000
+      CrewAiService__ApiKey: ${CREWAI_SERVICE_API_KEY}
+      Jwt__SigningKey: ${JWT_SIGNING_KEY}
+      Jwt__Issuer: ${JWT_ISSUER:-LinkedInContentManager}
+      Jwt__Audience: ${JWT_AUDIENCE:-LinkedInContentManager.Clients}
+      Cors__AllowedOrigins__0: ${CORS_ALLOWED_ORIGIN:-http://localhost:4200}
+      OpenTelemetry__OtlpEndpoint: http://localhost:4317 # no collector shipped in this compose file — see README
+    ports:
+      - "8080:8080"
+    depends_on:
+      postgres: { condition: service_healthy }
+      redis: { condition: service_healthy }
+      rabbitmq: { condition: service_healthy }
+      crewai-service: { condition: service_healthy }
+
+  worker:
+    build:
+      context: .
+      dockerfile: src/LinkedInContentManager.Worker/Dockerfile
+    environment:
+      ConnectionStrings__PostgreSql: Host=postgres;Port=5432;Database=${POSTGRES_DB:-linkedin_content_manager};Username=${POSTGRES_USER:-postgres};Password=${POSTGRES_PASSWORD:-postgres}
+      ConnectionStrings__Redis: redis:6379
+      RabbitMq__HostName: rabbitmq
+      RabbitMq__Port: "5672"
+      RabbitMq__UserName: ${RABBITMQ_USER:-guest}
+      RabbitMq__Password: ${RABBITMQ_PASSWORD:-guest}
+      CrewAiService__BaseUrl: http://crewai-service:8000
+      CrewAiService__ApiKey: ${CREWAI_SERVICE_API_KEY}
+    depends_on:
+      postgres: { condition: service_healthy }
+      redis: { condition: service_healthy }
+      rabbitmq: { condition: service_healthy }
+      crewai-service: { condition: service_healthy }
+
+  web:
+    build:
+      context: ./web
+    ports:
+      # Host-side 4202, not the Angular-conventional 4200: this dev machine already has an
+      # unrelated process (a different Angular project) bound to port 4200. Irrelevant to
+      # anything inside the compose network — only matters for *this host's* browser access.
+      - "4202:80"
+    depends_on:
+      api: { condition: service_started }
+    healthcheck:
+      # compose's healthcheck block overrides the image's own HEALTHCHECK instruction, so this
+      # needs the same 127.0.0.1 fix as web/Dockerfile — "localhost" resolves to ::1 first inside
+      # the container, and nginx here only listens on the IPv4 socket, so wget got ECONNREFUSED.
+      test: ["CMD", "wget", "-q", "-O-", "http://127.0.0.1:80/"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+
+volumes:
+  postgres-data:

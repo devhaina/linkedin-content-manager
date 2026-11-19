@@ -1,0 +1,17 @@
+@if (auth.isAuthenticated()) {
+  <nav class="nav">
+    <div class="nav-inner">
+      <a routerLink="/campaigns" class="brand">LinkedIn Content Manager</a>
+      <div class="links">
+        <a routerLink="/campaigns" routerLinkActive="active">Campaigns</a>
+        <a routerLink="/content" routerLinkActive="active">Content</a>
+        <a routerLink="/schedules" routerLinkActive="active">Schedules</a>
+      </div>
+      <div class="user">
+        <span class="muted">{{ auth.currentUser()?.displayName }}</span>
+        <span class="badge badge-neutral">{{ auth.role() }}</span>
+        <button class="btn btn-secondary btn-sm" (click)="logout()">Log out</button>
+      </div>
+    </div>
+  </nav>
+}

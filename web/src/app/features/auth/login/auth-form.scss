@@ -1,0 +1,25 @@
+.auth-page {
+  min-height: calc(100vh - 56px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+}
+.auth-card {
+  width: 100%;
+  max-width: 380px;
+}
+.auth-card h2 {
+  margin-bottom: 2px;
+}
+.auth-card .muted {
+  margin: 0 0 20px;
+}
+.auth-card .btn {
+  width: 100%;
+  justify-content: center;
+}
+.switch-link {
+  text-align: center;
+  margin: 16px 0 0;
+}

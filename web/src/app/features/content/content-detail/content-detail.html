@@ -1,0 +1,228 @@
+@if (loading()) {
+  <div class="empty-state"><span class="spinner"></span> Loading…</div>
+} @else if (!detail()) {
+  <div class="empty-state">Not found. <a routerLink="/content">Back to history</a></div>
+} @else {
+  @let d = detail()!;
+
+  <div class="stack">
+    <div class="row-between">
+      <div>
+        <a routerLink="/content" class="muted back-link">← Content history</a>
+        <h1>{{ d.topic }}</h1>
+      </div>
+      <div class="row">
+        <app-status-badge [status]="d.status" />
+        @if (d.status === 'Pending' || d.status === 'Running') {
+          <span class="spinner"></span>
+          <span class="muted">Updating automatically…</span>
+        }
+      </div>
+    </div>
+
+    @if (d.errorDetails) {
+      <div class="card banner banner-danger">
+        <strong>Execution failed{{ d.retryCount > 0 ? ' after ' + d.retryCount + ' retry(ies)' : '' }}:</strong>
+        {{ d.errorDetails }}
+      </div>
+    }
+
+    @if (d.status === 'Pending' || d.status === 'Running') {
+      <div class="card empty-state">
+        <span class="spinner" style="width: 28px; height: 28px;"></span>
+        <p>The five-agent pipeline is running (Research → Writing → Critique → Optimization → Scheduling). This page refreshes itself every few seconds — a full run typically takes one to a few minutes.</p>
+      </div>
+    }
+
+    @if (d.research) {
+      <section class="card">
+        <h3>Research brief</h3>
+        <div class="grid-2">
+          <div>
+            <h4>Trending angles</h4>
+            <ul>
+              @for (angle of d.research.trendingContentAngles; track angle) {
+                <li>{{ angle }}</li>
+              }
+            </ul>
+            <h4>Trending hooks</h4>
+            <ul>
+              @for (hook of d.research.trendingHooks; track hook) {
+                <li>{{ hook }}</li>
+              }
+            </ul>
+          </div>
+          <div>
+            <h4>Hashtags</h4>
+            <div class="chip-row">
+              @for (tag of d.research.trendingHashtags; track tag) {
+                <span class="chip">#{{ tag.replace('#', '') }}</span>
+              }
+            </div>
+            <h4>Source URLs</h4>
+            <ul class="source-list">
+              @for (url of d.research.sourceUrls; track url) {
+                <li><a [href]="url" target="_blank" rel="noopener">{{ url }}</a></li>
+              }
+            </ul>
+          </div>
+        </div>
+      </section>
+    }
+
+    @if (d.draftContent) {
+      <section class="card">
+        <h3>Original draft</h3>
+        <p class="post-content">{{ d.draftContent }}</p>
+      </section>
+    }
+
+    @for (review of d.reviews; track review.createdAtUtc) {
+      <section class="card">
+        <div class="row-between">
+          <h3>Critique</h3>
+          <span class="score-pill">{{ review.score }} / 10</span>
+        </div>
+        @if (review.guardrailViolations.length > 0) {
+          <div class="banner banner-warning">
+            <strong>Guardrail violations:</strong>
+            <ul>
+              @for (violation of review.guardrailViolations; track violation) {
+                <li>{{ violation }}</li>
+              }
+            </ul>
+          </div>
+        }
+        <div class="grid-2">
+          <div>
+            <h4>Hook</h4><p class="muted">{{ review.hookEvaluation }}</p>
+            <h4>Storytelling</h4><p class="muted">{{ review.storytellingEvaluation }}</p>
+            <h4>Engagement potential</h4><p class="muted">{{ review.engagementPotential }}</p>
+          </div>
+          <div>
+            <h4>CTA effectiveness</h4><p class="muted">{{ review.ctaEffectiveness }}</p>
+            <h4>Tone &amp; persona fit</h4><p class="muted">{{ review.toneReadabilityAssessment }}</p>
+          </div>
+        </div>
+        <h4>Recommendations</h4>
+        <ul>
+          @for (rec of review.recommendations; track rec) {
+            <li>{{ rec }}</li>
+          }
+        </ul>
+      </section>
+    }
+
+    @if (d.optimizedContent) {
+      <section class="card">
+        <div class="row-between">
+          <h3>Final optimized post</h3>
+          @if (auth.canEdit() && !editingOptimized()) {
+            <button class="btn btn-secondary btn-sm" (click)="editingOptimized.set(true)">Edit</button>
+          }
+        </div>
+
+        @if (editingOptimized()) {
+          <form [formGroup]="editForm" (ngSubmit)="submitEdit()">
+            <div class="field">
+              <textarea rows="8" formControlName="editedContent"></textarea>
+            </div>
+            <div class="row">
+              <button type="submit" class="btn btn-primary btn-sm" [disabled]="busy()">Save</button>
+              <button type="button" class="btn btn-secondary btn-sm" (click)="editingOptimized.set(false)">Cancel</button>
+            </div>
+          </form>
+        } @else {
+          <p class="post-content">{{ d.optimizedContent }}</p>
+          <div class="chip-row">
+            @for (tag of d.hashtags; track tag) {
+              <span class="chip">#{{ tag }}</span>
+            }
+          </div>
+        }
+      </section>
+    }
+
+    @if (d.linkedInPostId) {
+      <section class="card">
+        <div class="row-between">
+          <h3>Approval</h3>
+          @if (d.approvalStatus) {
+            <app-status-badge [status]="d.approvalStatus" />
+          }
+        </div>
+
+        @if (auth.canEdit() && (!d.approvalStatus || d.approvalStatus === 'Pending')) {
+          <div class="row">
+            <button class="btn btn-primary btn-sm" [disabled]="busy()" (click)="approve()">Approve</button>
+            <button class="btn btn-danger btn-sm" [disabled]="busy()" (click)="showRejectForm.set(!showRejectForm())">Reject</button>
+          </div>
+
+          @if (showRejectForm()) {
+            <form [formGroup]="rejectForm" (ngSubmit)="submitReject()" class="reject-form">
+              <div class="field">
+                <label for="reason">Reason</label>
+                <textarea id="reason" rows="2" formControlName="reason" placeholder="What needs to change?"></textarea>
+                @if (rejectForm.controls.reason.invalid && rejectForm.controls.reason.touched) {
+                  <span class="error">A reason is required.</span>
+                }
+              </div>
+              <button type="submit" class="btn btn-danger btn-sm" [disabled]="busy()">Confirm rejection</button>
+            </form>
+          }
+        } @else if (!d.approvalStatus) {
+          <p class="muted">Waiting for content.</p>
+        }
+      </section>
+    }
+
+    @if (d.scheduling) {
+      <section class="card">
+        <div class="row-between">
+          <h3>Publishing brief</h3>
+          <app-status-badge [status]="d.scheduling.status" />
+        </div>
+        <div class="grid-2">
+          <div>
+            <h4>Recommended</h4>
+            <p class="muted">{{ d.scheduling.recommendedDay }} at {{ d.scheduling.recommendedTime }} ({{ d.scheduling.audienceTimezone }})</p>
+            <h4>Hashtag strategy</h4>
+            <p class="muted">{{ d.scheduling.hashtagStrategy }}</p>
+          </div>
+          <div>
+            <h4>First-hour engagement plan</h4>
+            <p class="muted">{{ d.scheduling.firstHourEngagementPlan }}</p>
+            @if (d.scheduling.scheduledAtUtc) {
+              <h4>Scheduled for</h4>
+              <p class="muted">{{ d.scheduling.scheduledAtUtc | date: 'medium' }}</p>
+            }
+            @if (d.scheduling.publishedAtUtc) {
+              <h4>Published</h4>
+              <p class="muted">{{ d.scheduling.publishedAtUtc | date: 'medium' }} (external id: {{ d.scheduling.linkedInExternalPostId }})</p>
+            }
+          </div>
+        </div>
+
+        @if (auth.canEdit() && d.approvalStatus === 'Approved' && (d.scheduling.status === 'Recommended' || d.scheduling.status === 'Scheduled' || d.scheduling.status === 'Failed')) {
+          @if (!showScheduleForm()) {
+            <button class="btn btn-secondary btn-sm" (click)="showScheduleForm.set(true)">
+              {{ d.scheduling.status === 'Scheduled' ? 'Reschedule' : 'Schedule publishing' }}
+            </button>
+          } @else {
+            <form [formGroup]="scheduleForm" (ngSubmit)="submitSchedule()" class="row">
+              <input type="datetime-local" formControlName="scheduledAt" />
+              <button type="submit" class="btn btn-primary btn-sm" [disabled]="busy()">Confirm</button>
+              <button type="button" class="btn btn-secondary btn-sm" (click)="showScheduleForm.set(false)">Cancel</button>
+            </form>
+          }
+        }
+      </section>
+    }
+
+    @if (auth.canEdit() && (d.status === 'Completed' || d.status === 'Failed' || d.status === 'PartiallyFailed')) {
+      <div class="row">
+        <button class="btn btn-secondary" [disabled]="busy()" (click)="regenerate()">Regenerate this topic</button>
+      </div>
+    }
+  </div>
+}

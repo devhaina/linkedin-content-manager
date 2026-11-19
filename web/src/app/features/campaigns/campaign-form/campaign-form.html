@@ -1,0 +1,65 @@
+<div class="stack" style="max-width: 560px;">
+  <h1>{{ isEditMode() ? 'Edit campaign' : 'New campaign' }}</h1>
+
+  @if (loading()) {
+    <div class="empty-state"><span class="spinner"></span> Loading…</div>
+  } @else {
+    <form class="card" [formGroup]="form" (ngSubmit)="submit()">
+      <div class="field">
+        <label for="name">Name</label>
+        <input id="name" type="text" formControlName="name" />
+        @if (form.controls.name.invalid && form.controls.name.touched) {
+          <span class="error">Name is required.</span>
+        }
+      </div>
+
+      <div class="field">
+        <label for="nicheId">Niche</label>
+        @if (isEditMode()) {
+          <input type="text" [value]="nicheName()" disabled />
+          <span class="muted" style="font-size: 12.5px;">Niche can't change after creation.</span>
+        } @else {
+          <select id="nicheId" formControlName="nicheId">
+            <option value="" disabled>Select a niche…</option>
+            @for (niche of niches(); track niche.id) {
+              <option [value]="niche.id">{{ niche.name }}</option>
+            }
+          </select>
+          @if (form.controls.nicheId.invalid && form.controls.nicheId.touched) {
+            <span class="error">Select a niche.</span>
+          }
+        }
+      </div>
+
+      <div class="field">
+        <label for="defaultPersona">Default writer persona</label>
+        <select id="defaultPersona" formControlName="defaultPersona">
+          @for (persona of personaOptions; track persona) {
+            <option [value]="persona">{{ personaLabels[persona] }}</option>
+          }
+        </select>
+      </div>
+
+      @if (isEditMode()) {
+        <div class="field">
+          <label for="status">Status</label>
+          <select id="status" formControlName="status">
+            @for (status of statusOptions; track status) {
+              <option [value]="status">{{ status }}</option>
+            }
+          </select>
+        </div>
+      }
+
+      <div class="row">
+        <button type="submit" class="btn btn-primary" [disabled]="submitting()">
+          @if (submitting()) {
+            <span class="spinner"></span>
+          }
+          {{ isEditMode() ? 'Save changes' : 'Create campaign' }}
+        </button>
+        <a routerLink="/campaigns" class="btn btn-secondary">Cancel</a>
+      </div>
+    </form>
+  }
+</div>

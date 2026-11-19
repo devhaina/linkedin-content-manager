@@ -1,0 +1,59 @@
+<div class="stack" style="max-width: 560px;">
+  <h1>Generate content</h1>
+  <p class="muted">
+    Runs the real five-agent pipeline (Research → Writing → Critique → Optimization → Scheduling).
+    This takes one to a few minutes — you'll be taken to a status page that updates automatically.
+  </p>
+
+  @if (loading()) {
+    <div class="empty-state"><span class="spinner"></span> Loading campaigns…</div>
+  } @else if (campaigns().length === 0) {
+    <div class="card empty-state">
+      <p>You need an active campaign before generating content.</p>
+      <a routerLink="/campaigns/new" class="btn btn-primary">Create a campaign</a>
+    </div>
+  } @else {
+    <form class="card" [formGroup]="form" (ngSubmit)="submit()">
+      <div class="field">
+        <label for="campaignId">Campaign</label>
+        <select id="campaignId" formControlName="campaignId">
+          <option value="" disabled>Select a campaign…</option>
+          @for (campaign of campaigns(); track campaign.id) {
+            <option [value]="campaign.id">{{ campaign.name }} ({{ campaign.nicheName }})</option>
+          }
+        </select>
+        @if (form.controls.campaignId.invalid && form.controls.campaignId.touched) {
+          <span class="error">Select a campaign.</span>
+        }
+      </div>
+
+      <div class="field">
+        <label for="topic">Topic</label>
+        <textarea id="topic" rows="3" formControlName="topic" placeholder="e.g. Real-time fraud detection using AI agents in digital banking"></textarea>
+        @if (form.controls.topic.invalid && form.controls.topic.touched) {
+          <span class="error">3–500 characters.</span>
+        }
+      </div>
+
+      <div class="field">
+        <label for="personaOverride">Persona override (optional)</label>
+        <select id="personaOverride" formControlName="personaOverride">
+          <option [value]="null">Use campaign default</option>
+          @for (persona of personaOptions; track persona) {
+            <option [value]="persona">{{ personaLabels[persona] }}</option>
+          }
+        </select>
+      </div>
+
+      <div class="row">
+        <button type="submit" class="btn btn-primary" [disabled]="submitting()">
+          @if (submitting()) {
+            <span class="spinner"></span>
+          }
+          Generate
+        </button>
+        <a routerLink="/content" class="btn btn-secondary">Cancel</a>
+      </div>
+    </form>
+  }
+</div>
